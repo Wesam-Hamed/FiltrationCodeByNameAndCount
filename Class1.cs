@@ -87,5 +87,54 @@ namespace FilterByBlockName
                 tr.Dispose();
             }
         }
+
+        [CommandMethod("TATB")]
+        public void DrawBlock()
+        {
+            Document cDoc = Application.DocumentManager.MdiActiveDocument;
+            Editor ed = cDoc.Editor;
+            Database cDB = cDoc.Database;
+
+            string name = "";
+            using (Transaction Trans1 = cDB.TransactionManager.StartTransaction())
+            {
+                PromptStringOptions options = new PromptStringOptions("Enter block name: ");
+                PromptResult pr = ed.GetString(options);
+                name = pr.StringResult;
+            }
+
+            InsertBlock(new Point3d(0, 0, 0), name);
+        }
+
+
+        public void InsertBlock(Point3d InsPt, string BlkName)
+        {
+            Document cDoc = Application.DocumentManager.MdiActiveDocument;
+            Database cDB = cDoc.Database;
+            Editor cEd = cDoc.Editor;
+
+            using (Transaction Trans1 = cDB.TransactionManager.StartTransaction())
+            {
+                ObjectId blockId = cDB.CurrentSpaceId;
+                BlockTableRecord btr = Trans1.GetObject(blockId, OpenMode.ForWrite) as BlockTableRecord;
+                BlockTable blkTable = Trans1.GetObject(cDB.BlockTableId, OpenMode.ForWrite) as BlockTable;
+                BlockTableRecord blkTableRec = new BlockTableRecord();
+                blkTableRec.Name = BlkName;
+                if (!blkTable.Has(BlkName))
+                {
+                    blkTable.Add(blkTableRec);
+                    Trans1.AddNewlyCreatedDBObject(blkTableRec, true);
+                }
+                
+                ObjectId id = blkTable[BlkName];
+                // Insert support block at insertion point InsPt
+                BlockReference rfml = new BlockReference(InsPt, id);
+                btr.AppendEntity(rfml);
+
+                Trans1.AddNewlyCreatedDBObject(rfml, true);
+
+                Trans1.Commit();
+            }
+        }
     }
 }
